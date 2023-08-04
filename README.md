@@ -1,0 +1,2 @@
+# NorthGateDBScripts
+Скрипты базы данных
