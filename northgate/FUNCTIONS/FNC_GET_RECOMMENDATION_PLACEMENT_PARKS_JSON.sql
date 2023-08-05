@@ -21,46 +21,54 @@ AS
 									   AVG(v.nmb_of_business_bld) AS avg_business,
 									   AVG(v.nmb_of_trnsp_inf_bld) AS avg_trnsp,
 									   AVG(v.nmb_of_parks) AS avg_parks
-							  FROM     polygons v)
-	SELECT   json_agg(row_to_json(p.*)) AS json
-	FROM     (SELECT   p.polygon_id,
-					   p.population,
-					   p.nmb_of_residential_bld,
-					   p.nmb_of_soc_infr_bld,
-					   p.nmb_of_tourism_bld,
-					   p.nmb_of_business_bld,
-					   p.nmb_of_trnsp_inf_bld,
-					   p.nmb_of_parks,
-					   CASE
-						  WHEN (p.population > 1632 AND p.nmb_of_parks < 1 AND p.polygon_comfort_rating > 100)
-						  THEN 'Да'
-						  ELSE 'Нет'
-					   END AS recommendation
-			FROM       (SELECT   p.polygon_id,
-								 p.population,
-								 p.nmb_of_residential_bld,
-								 p.nmb_of_soc_infr_bld,
-								 p.nmb_of_tourism_bld,
-								 p.nmb_of_business_bld,
-								 p.nmb_of_trnsp_inf_bld,
-								 p.nmb_of_parks,
-								 (ratio_res_bsn + ration_nfr + ratio_tourism + 
-								  ratio_business + ratio_trnsp + ratio_parks) AS polygon_comfort_rating
+							  FROM     polygons v),
+			 result AS (SELECT   p.*
 						FROM     (SELECT   p.polygon_id,
-										   p.population,
-										   p.nmb_of_residential_bld,
-										   p.nmb_of_soc_infr_bld,
-										   p.nmb_of_tourism_bld,
-										   p.nmb_of_business_bld,
-										   p.nmb_of_trnsp_inf_bld,
-										   p.nmb_of_parks,
-										   (p.nmb_of_residential_bld / pa.avg_res_bsn) * 100 AS ratio_res_bsn,
-										   (p.nmb_of_soc_infr_bld / pa.avg_nfr) * 30 AS ration_nfr,
-										   (p.nmb_of_tourism_bld / pa.avg_tourism) * 50 AS ratio_tourism,
-										   (p.nmb_of_business_bld / pa.avg_business) * 50 AS ratio_business,
-										   (p.nmb_of_trnsp_inf_bld / pa.avg_trnsp) * 30 AS ratio_trnsp,
-										   (p.nmb_of_parks / pa.avg_parks) * 100 AS ratio_parks
-								  FROM     polygons p
-										   CROSS JOIN polygons_avg pa) p) p) p;
+										   FLOOR(p.population) AS population,
+										   FLOOR(p.nmb_of_residential_bld) AS nmb_of_residential_bld,
+										   FLOOR(p.nmb_of_soc_infr_bld) AS nmb_of_soc_infr_bld,
+										   FLOOR(p.nmb_of_tourism_bld) AS nmb_of_tourism_bld,
+										   FLOOR(p.nmb_of_business_bld) AS nmb_of_business_bld,
+										   FLOOR(p.nmb_of_trnsp_inf_bld) AS nmb_of_trnsp_inf_bld,
+										   FLOOR(p.nmb_of_parks) AS nmb_of_parks,
+										   FLOOR(p.polygon_comfort_rating) AS polygon_comfort_rating,
+										   CASE
+											  WHEN (p.population > 1632 AND p.nmb_of_parks < 1 AND p.polygon_comfort_rating > 100)
+											  THEN 'Да'
+											  ELSE 'Нет'
+										   END AS recommendation
+								FROM       (SELECT   p.polygon_id,
+													 p.population,
+													 p.nmb_of_residential_bld,
+													 p.nmb_of_soc_infr_bld,
+													 p.nmb_of_tourism_bld,
+													 p.nmb_of_business_bld,
+													 p.nmb_of_trnsp_inf_bld,
+													 p.nmb_of_parks,
+													 (ratio_res_bsn + ration_nfr + ratio_tourism + 
+													  ratio_business + ratio_trnsp + ratio_parks) / 6 AS polygon_comfort_rating
+											FROM     (SELECT   p.polygon_id,
+															   p.population,
+															   p.nmb_of_residential_bld,
+															   p.nmb_of_soc_infr_bld,
+															   p.nmb_of_tourism_bld,
+															   p.nmb_of_business_bld,
+															   p.nmb_of_trnsp_inf_bld,
+															   p.nmb_of_parks,
+															   (p.nmb_of_residential_bld / pa.avg_res_bsn) * 100 AS ratio_res_bsn,
+															   (p.nmb_of_soc_infr_bld / pa.avg_nfr) * 30 AS ration_nfr,
+															   (p.nmb_of_tourism_bld / pa.avg_tourism) * 50 AS ratio_tourism,
+															   (p.nmb_of_business_bld / pa.avg_business) * 50 AS ratio_business,
+															   (p.nmb_of_trnsp_inf_bld / pa.avg_trnsp) * 30 AS ratio_trnsp,
+															   (p.nmb_of_parks / pa.avg_parks) * 100 AS ratio_parks
+													  FROM     polygons p
+															   CROSS JOIN polygons_avg pa) p) p) p)
+	SELECT   json_agg(row_to_json(v.*)) AS json
+	FROM     (SELECT   r.*,
+					   (SELECT   MAX(population)
+						FROM     result) AS max_population,
+					   (SELECT   MAX(polygon_comfort_rating)
+						FROM     result) AS max_polygon_comfort_rating
+			  FROM     result r) v;
 	$$
 	LANGUAGE SQL;
